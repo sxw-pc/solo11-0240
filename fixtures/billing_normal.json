@@ -1,0 +1,17 @@
+{"actions":[
+{"op":"meter.import_page","args":{"page":"v1:p1","rows":[{"host":"hostA","tenant":"t1","minute":10,"core_seconds":60},{"host":"hostB","tenant":"t2","minute":10,"core_seconds":30}]}},
+{"op":"meter.import_page","args":{"page":"v2:p1","rows":[{"host":"hostA","tenant":"t1","minute":10,"core_seconds":60}]}},
+{"op":"meter.calibrate","args":{"cal_id":"cal1","source":"controller","cells":[{"host":"hostA","minute":10,"core_seconds":60},{"host":"hostB","minute":10,"core_seconds":30}],"declared_total":90}},
+{"op":"meter.container","args":{"barcode":"CNTR-8842-1001","tenant":"t1"}},
+{"op":"meter.container","args":{"barcode":"CNTR-8842-1002","tenant":"t2"}},
+{"op":"meter.migrate","args":{"migration_id":"m1","host":"hostA","barcode":"CNTR-8842-10","from_minute":10,"to_minute":10}},
+{"op":"meter.migrate","args":{"migration_id":"m2","host":"hostB","barcode":"CNTR-8842-1002","from_minute":10,"to_minute":10}},
+{"op":"billing.close","args":{"invoice":"inv-1","signer":"procurement-lead"}},
+{"op":"billing.issue","args":{"tenant":"t2","signer":"billing-lead"}},
+{"op":"billing.issue","args":{"tenant":"t1","signer":"billing-lead"}},
+{"op":"billing.dispatch","args":{"kind":"vendor"}},
+{"op":"billing.dispatch","args":{"kind":"tenant"}},
+{"op":"meter.migrate","args":{"migration_id":"m1","host":"hostA","barcode":"CNTR-8842-1001","from_minute":10,"to_minute":10}},
+{"op":"billing.issue","args":{"tenant":"t1","signer":"billing-lead"}},
+{"op":"billing.reconcile","args":{}}
+]}

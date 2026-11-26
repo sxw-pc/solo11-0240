@@ -1,12 +1,17 @@
 import argparse
 import json
 from pathlib import Path
-from . import artifact, stage, recovery
+from . import artifact, stage, recovery, meter_capture, physical_usage, vendor_payable, tenant_charge
 from .store import open_db, report, one, rows, tx
 
 COMMANDS={f"artifact.{name}":getattr(artifact,name) for name in ["baseline","register","contract","population","proxy","plan","revoke"]}
 COMMANDS.update({f"stage.{name}":getattr(stage,name) for name in ["start","receipt","sample","decide"]})
 COMMANDS.update({f"recovery.{name}":getattr(recovery,name) for name in ["stable","choose","compensate","close","orphan","resolve_orphan"]})
+COMMANDS["meter.import_page"]=meter_capture.import_page
+COMMANDS.update({f"meter.{name}":getattr(physical_usage,name) for name in ["alias","container","deploy_proof","migrate","calibrate"]})
+COMMANDS["billing.close"]=vendor_payable.close
+COMMANDS["billing.issue"]=tenant_charge.issue
+COMMANDS.update({f"billing.{name}":getattr(physical_usage,name) for name in ["dispatch","reconcile"]})
 
 def apply_command(db, name, args, request_id):
     if name not in COMMANDS:
@@ -57,7 +62,7 @@ def run(db_path,fixture,subsystem=None):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("subsystem",choices=["artifact","stage","recovery","all"])
+    p.add_argument("subsystem",choices=["artifact","stage","recovery","meter","billing","all"])
     p.add_argument("fixture")
     p.add_argument("--db",default="cloudroll.sqlite")
     a=p.parse_args()
