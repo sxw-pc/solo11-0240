@@ -1,12 +1,26 @@
 import argparse
 import json
 from pathlib import Path
-from . import artifact, stage, recovery
+from . import artifact, stage, recovery, provenance, signature, transparency
 from .store import open_db, report, one, rows, tx
 
-COMMANDS={f"artifact.{name}":getattr(artifact,name) for name in ["baseline","register","contract","population","proxy","plan","revoke"]}
+COMMANDS={f"artifact.{name}":getattr(artifact,name) for name in ["baseline","register","contract","population","proxy","plan","revoke","client_eligibility"]}
 COMMANDS.update({f"stage.{name}":getattr(stage,name) for name in ["start","receipt","sample","decide"]})
 COMMANDS.update({f"recovery.{name}":getattr(recovery,name) for name in ["stable","choose","compensate","close","orphan","resolve_orphan"]})
+COMMANDS.update({f"provenance.{name}":getattr(provenance,name) for name in [
+    "build","seal","cross_sign","attest","publish","withdraw",
+    "quarantine_build","clean","affected","containment_report","source_digest_for_plan",
+    "seal_record","build_record","artifact_for_build","refresh_seal","independent_attestation",
+    "cleanup_record","pending_cleanup","mark_seal_contested","unmark_contested",
+    "supersede_source_plans","attach_log"]})
+COMMANDS.update({f"signature.{name}":getattr(signature,name) for name in [
+    "register_key","authorize","key_status","revoke_key","put_signature",
+    "make_signature","rescan","sign_head","sign_key_revocation",
+    "get_key","scope_authorized","signature_page","authority_at"]})
+COMMANDS.update({f"transparency.{name}":getattr(transparency,name) for name in [
+    "register_witness","submit_head","anchor","consistency","trusted_head",
+    "log_status","merkle_root","consistency_path","entry_in_trusted_head",
+    "conflicts","key_contested","verify_consistency"]})
 
 def apply_command(db, name, args, request_id):
     if name not in COMMANDS:
@@ -57,7 +71,7 @@ def run(db_path,fixture,subsystem=None):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("subsystem",choices=["artifact","stage","recovery","all"])
+    p.add_argument("subsystem",choices=["artifact","stage","recovery","provenance","signature","transparency","all"])
     p.add_argument("fixture")
     p.add_argument("--db",default="cloudroll.sqlite")
     a=p.parse_args()

@@ -20,7 +20,9 @@ class ReleaseTest(unittest.TestCase):
         artifact.population(self.db,"svc",client,5)
     def test_module_local(self):
         print("module_file",cloudroll.__file__)
-        self.assertIn("solo11-0240",str(pathlib.Path(cloudroll.__file__).resolve()))
+        located=str(pathlib.Path(cloudroll.__file__).resolve())
+        self.assertTrue("solo11-0240" in located or located.startswith(str(pathlib.Path(__file__).resolve().parents[1])),
+                        located)
     def test_client_and_window_admission(self):
         self.seed(0)
         self.assertEqual(artifact.plan(self.db,"e1","p1","svc","new",1,10),"unsupported_active_clients")

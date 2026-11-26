@@ -1,15 +1,44 @@
 from .store import one, rows, tx
 from .artifact import client_eligibility
+from . import provenance
+
+
+def _seal_gate(db, plan):
+    """Proof that the plan's bytes are the sealed, approved build.
+
+    A provenance plan must reference a sealed digest; the seal must still be
+    open and its digest must equal the plan snapshot.  An empty seal therefore
+    cannot be swapped for a later one.
+    """
+    if not plan["seal_id"]:
+        artifact = one(db, "SELECT * FROM artifact WHERE id=?", (plan["artifact_id"],))
+        if artifact and artifact["provenance_required"]:
+            return "provenance_seal_required"
+        return None
+    record = one(db, "SELECT * FROM seal WHERE id=?", (plan["seal_id"],))
+    if not record:
+        return "unknown_seal"
+    if record["digest"] != plan["sealed_digest"]:
+        return "seal_digest_changed"
+    if record["status"] in ("withdrawn", "quarantined", "contested", "contained"):
+        return "seal_not_open"
+    if not record["trusted"]:
+        return "seal_not_trusted"
+    return None
+
 
 def start(db, stage_id, plan_id, members, start_ts, end_ts, max_fail=0, ordinal=1):
     with tx(db):
         plan=one(db,"SELECT * FROM plan WHERE id=?",(plan_id,))
-        if not plan or plan["status"]!="locked":
+        if not plan or plan["status"] not in ("locked",):
             return "plan_not_locked"
         baseline=one(db,"SELECT generation FROM baseline WHERE service=?",(plan["service"],))
         artifact=one(db,"SELECT revoked_seq FROM artifact WHERE id=?",(plan["artifact_id"],))
         if not baseline or baseline["generation"]!=plan["baseline_gen"] or artifact["revoked_seq"]:
             return "baseline_or_artifact_changed"
+        seal_problem = _seal_gate(db, plan)
+        if seal_problem:
+            return seal_problem
         if client_eligibility(db,plan["service"],plan["artifact_id"],plan["end_ts"])!="eligible":
             return "client_contract_no_longer_covered"
         if start_ts<plan["start_ts"] or end_ts>plan["end_ts"] or start_ts>=end_ts:
@@ -28,12 +57,20 @@ def start(db, stage_id, plan_id, members, start_ts, end_ts, max_fail=0, ordinal=
                 return "previous_stage_not_passed"
         if one(db,"SELECT id FROM stage WHERE id=?",(stage_id,)):
             return "already_started"
+        if plan["seal_id"]:
+            source = provenance.source_digest_for_plan(db, plan)
+            if source:
+                replicas = [m["replica"] for m in members]
+                pending = provenance.pending_cleanup(db, source, replicas)
+                if pending:
+                    return "replica_cleanup_required:" + ",".join(pending)
         db.execute("INSERT INTO stage VALUES(?,?,?,?,?,?,?)",(stage_id,plan_id,ordinal,start_ts,end_ts,max_fail,"running"))
         for member in members:
             db.execute("INSERT INTO member VALUES(?,?,?)",(stage_id,member["replica"],member["generation"]))
         return "started"
 
-def receipt(db, receipt_id, stage_id, replica, generation, digest):
+
+def receipt(db, receipt_id, stage_id, replica, generation, digest, seal_id=None):
     with tx(db):
         s=one(db,"SELECT * FROM stage WHERE id=?",(stage_id,))
         m=one(db,"SELECT * FROM member WHERE stage_id=? AND replica=?",(stage_id,replica))
@@ -45,12 +82,27 @@ def receipt(db, receipt_id, stage_id, replica, generation, digest):
         a=one(db,"SELECT * FROM artifact WHERE id=?",(p["artifact_id"],))
         if generation!=m["generation"] or digest!=a["digest"]:
             return "wrong_identity_or_digest"
+        proof = None
+        if p["seal_id"] or (a and a["provenance_required"]):
+            if not p["seal_id"]:
+                return "provenance_seal_required"
+            seal = one(db, "SELECT * FROM seal WHERE id=?", (p["seal_id"],))
+            if seal_id is not None and seal_id != p["seal_id"]:
+                return "wrong_seal"
+            if not seal or seal["digest"] != digest or seal["digest"] != p["sealed_digest"]:
+                return "wrong_seal_or_digest"
+            if seal["status"] in ("withdrawn", "quarantined", "contested", "contained"):
+                return "seal_not_open"
+            if not seal["trusted"]:
+                return "seal_not_trusted"
+            proof = seal["id"]
         if one(db,"SELECT id FROM receipt WHERE id=?",(receipt_id,)):
             return "duplicate"
         if one(db,"SELECT id FROM receipt WHERE stage_id=? AND replica=?",(stage_id,replica)):
             return "already_acknowledged"
-        db.execute("INSERT INTO receipt VALUES(?,?,?,?,?)",(receipt_id,stage_id,replica,generation,digest))
+        db.execute("INSERT INTO receipt VALUES(?,?,?,?,?,?)",(receipt_id,stage_id,replica,generation,digest,proof))
         return "recorded"
+
 
 def sample(db, sample_id, stage_id, replica, at, digest, healthy):
     with tx(db):
@@ -63,6 +115,7 @@ def sample(db, sample_id, stage_id, replica, at, digest, healthy):
         db.execute("INSERT INTO sample VALUES(?,?,?,?,?,?)",(sample_id,stage_id,replica,at,digest,int(healthy)))
         return "recorded"
 
+
 def decide(db, stage_id, at):
     with tx(db):
         s=one(db,"SELECT * FROM stage WHERE id=?",(stage_id,))
@@ -73,11 +126,23 @@ def decide(db, stage_id, at):
         if p["status"]!="locked" or a["revoked_seq"]:
             db.execute("UPDATE stage SET status='blocked_revoked' WHERE id=?",(stage_id,))
             return "blocked_revoked"
+        seal_problem = _seal_gate(db, p)
+        if seal_problem:
+            db.execute("UPDATE stage SET status='blocked_revoked' WHERE id=?",(stage_id,))
+            return "blocked_revoked"
+        if p["seal_id"]:
+            seal = one(db, "SELECT * FROM seal WHERE id=?", (p["seal_id"],))
+            if not seal["trusted"]:
+                db.execute("UPDATE stage SET status='blocked_revoked' WHERE id=?",(stage_id,))
+                return "blocked_revoked"
         members=rows(db,"SELECT * FROM member WHERE stage_id=?",(stage_id,))
         missing=[]
         failed=0
         for m in members:
-            r=one(db,"SELECT id FROM receipt WHERE stage_id=? AND replica=? AND generation=? AND digest=?",(stage_id,m["replica"],m["generation"],a["digest"]))
+            if p["seal_id"]:
+                r=one(db,"SELECT id FROM receipt WHERE stage_id=? AND replica=? AND generation=? AND digest=? AND seal_id=?",(stage_id,m["replica"],m["generation"],a["digest"],p["seal_id"]))
+            else:
+                r=one(db,"SELECT id FROM receipt WHERE stage_id=? AND replica=? AND generation=? AND digest=?",(stage_id,m["replica"],m["generation"],a["digest"]))
             if not r:
                 missing.append(m["replica"])
             samples=rows(db,"SELECT * FROM sample WHERE stage_id=? AND replica=? AND at>=? AND at<=? AND digest=? ORDER BY at DESC,id DESC",(stage_id,m["replica"],s["start_ts"],s["end_ts"],a["digest"]))

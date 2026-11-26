@@ -1,0 +1,325 @@
+{
+  "actions": [
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "K1",
+        "public_key": "d9d90815eb9a754e47bb98b83ff5655378a206f52bc80dc07e3c2aeb614333a7",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "K2",
+        "public_key": "214b5c8660870b5c02cd257cf37b2714d51848acc93e4be9f7c5d6f4a7829e50",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "BW",
+        "public_key": "55c2ac764cd746023bba10ddacff5f2c5bd5795541366e9ccdbc217cd52d086a",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "K1",
+        "authority": "release-authority",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "K2",
+        "authority": "release-authority",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "BW",
+        "authority": "build-witness",
+        "scope": "build.attest",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "transparency.register_witness",
+      "args": {
+        "witness_id": "W1",
+        "public_key": "a5a7e0692cf4f43625ea77ac9ffb8d09f5c0a8a14d470b00ebd13c778ff68fe2"
+      }
+    },
+    {
+      "op": "transparency.register_witness",
+      "args": {
+        "witness_id": "W2",
+        "public_key": "855f52be7e24e4082e83d0f89d6baf1c845fbca1a95bc5d3346130aaa698ba72"
+      }
+    },
+    {
+      "op": "provenance.build",
+      "args": {
+        "build_id": "build-d",
+        "name": "release.bin",
+        "builder": "old-builder",
+        "at": 1,
+        "content": {
+          "artifact": "D",
+          "bytes": "original"
+        },
+        "recipe": {
+          "toolchain": "gcc-12",
+          "flags": [
+            "-O2"
+          ],
+          "command": "make release"
+        },
+        "snapshot": {
+          "sources": [
+            "S@sha256:aaa",
+            "compiler@sha256:bbb"
+          ]
+        },
+        "output_files": [
+          "release.bin"
+        ],
+        "min_api": 2,
+        "max_api": 4
+      }
+    },
+    {
+      "op": "signature.make_signature",
+      "args": {
+        "signature_id": "sig-k1-d",
+        "key_id": "K1",
+        "kind": "artifact.seal",
+        "subject": "seal-d",
+        "at": 10,
+        "statement": {
+          "artifact_digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+          "artifact_name": "release.bin",
+          "build_id": "build-d",
+          "builder": "old-builder",
+          "builder_authority": "old-builder",
+          "kind": "artifact.seal",
+          "release_at": 10
+        },
+        "private_key": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "op": "provenance.seal",
+      "args": {
+        "seal_id": "seal-d",
+        "build_id": "build-d",
+        "signatures": [
+          "sig-k1-d"
+        ],
+        "release_at": 10
+      }
+    },
+    {
+      "op": "transparency.submit_head",
+      "args": {
+        "head_id": "page-a",
+        "log_id": "release-log",
+        "witness": "W1",
+        "size": 2,
+        "root": "63892fbbf8310df96887a4041856ec1bc6e80b661a085786310645e40d26e47e",
+        "at": 10,
+        "entries": [
+          "{\"at\":0,\"key_id\":\"K1\",\"kind\":\"key.authorization\"}",
+          "{\"digest\":\"ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2\",\"kind\":\"release\"}"
+        ],
+        "private_key": "4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    },
+    {
+      "op": "transparency.submit_head",
+      "args": {
+        "head_id": "page-b",
+        "log_id": "release-log",
+        "witness": "W2",
+        "size": 2,
+        "root": "930d29ccc295d3452e20b9b761139534b580a2621c83614922a8ee252300166b",
+        "at": 10,
+        "entries": [
+          "{\"at\":5,\"key_id\":\"K1\",\"kind\":\"key.revocation\"}",
+          "{\"digest\":\"ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2\",\"kind\":\"release\"}"
+        ],
+        "private_key": "5555555555555555555555555555555555555555555555555555555555555555"
+      }
+    },
+    {
+      "op": "signature.make_signature",
+      "args": {
+        "signature_id": "sig-bw-d",
+        "key_id": "BW",
+        "kind": "build.attestation",
+        "subject": "build-d",
+        "at": 11,
+        "statement": {
+          "build_id": "build-d",
+          "builder": "old-builder",
+          "builder_authority": "old-builder",
+          "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+          "kind": "build.attestation",
+          "log_independent": true,
+          "witness": "BW",
+          "at": 11
+        },
+        "private_key": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    },
+    {
+      "op": "provenance.attest",
+      "args": {
+        "attestation_id": "att-d",
+        "build_id": "build-d",
+        "witness_key": "BW",
+        "signature_id": "sig-bw-d",
+        "at": 11,
+        "log_id": "release-log"
+      }
+    },
+    {
+      "op": "signature.make_signature",
+      "args": {
+        "signature_id": "sig-k2-d",
+        "key_id": "K2",
+        "kind": "artifact.seal",
+        "subject": "seal-d",
+        "at": 10,
+        "statement": {
+          "artifact_digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+          "artifact_name": "release.bin",
+          "build_id": "build-d",
+          "builder": "old-builder",
+          "builder_authority": "old-builder",
+          "kind": "artifact.seal",
+          "release_at": 10
+        },
+        "private_key": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    },
+    {
+      "op": "provenance.cross_sign",
+      "args": {
+        "seal_id": "seal-d",
+        "signature_id": "sig-k2-d"
+      }
+    },
+    {
+      "op": "artifact.baseline",
+      "args": {
+        "service": "svc",
+        "api": 3,
+        "generation": 1
+      }
+    },
+    {
+      "op": "artifact.contract",
+      "args": {
+        "artifact_id": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "min_protocol": 1,
+        "max_protocol": 3
+      }
+    },
+    {
+      "op": "artifact.population",
+      "args": {
+        "service": "svc",
+        "protocol": 1,
+        "count": 5
+      }
+    },
+    {
+      "op": "artifact.plan",
+      "args": {
+        "event_id": "ev-p1",
+        "plan_id": "p1",
+        "service": "svc",
+        "artifact_id": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "start_ts": 1,
+        "end_ts": 10
+      }
+    },
+    {
+      "op": "stage.start",
+      "args": {
+        "stage_id": "s1",
+        "plan_id": "p1",
+        "members": [
+          {
+            "replica": "a",
+            "generation": 1
+          },
+          {
+            "replica": "b",
+            "generation": 1
+          }
+        ],
+        "start_ts": 2,
+        "end_ts": 6
+      }
+    },
+    {
+      "op": "stage.receipt",
+      "args": {
+        "receipt_id": "r1",
+        "stage_id": "s1",
+        "replica": "a",
+        "generation": 1,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "seal_id": "seal-d"
+      }
+    },
+    {
+      "op": "stage.receipt",
+      "args": {
+        "receipt_id": "r2",
+        "stage_id": "s1",
+        "replica": "b",
+        "generation": 1,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "seal_id": "seal-d"
+      }
+    },
+    {
+      "op": "stage.sample",
+      "args": {
+        "sample_id": "h1",
+        "stage_id": "s1",
+        "replica": "a",
+        "at": 3,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "healthy": true
+      }
+    },
+    {
+      "op": "stage.sample",
+      "args": {
+        "sample_id": "h2",
+        "stage_id": "s1",
+        "replica": "b",
+        "at": 4,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "healthy": true
+      }
+    },
+    {
+      "op": "stage.decide",
+      "args": {
+        "stage_id": "s1",
+        "at": 6
+      }
+    }
+  ]
+}

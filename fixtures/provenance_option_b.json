@@ -1,0 +1,431 @@
+{
+  "actions": [
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "K1",
+        "public_key": "d9d90815eb9a754e47bb98b83ff5655378a206f52bc80dc07e3c2aeb614333a7",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "K2",
+        "public_key": "214b5c8660870b5c02cd257cf37b2714d51848acc93e4be9f7c5d6f4a7829e50",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.register_key",
+      "args": {
+        "key_id": "BW",
+        "public_key": "55c2ac764cd746023bba10ddacff5f2c5bd5795541366e9ccdbc217cd52d086a",
+        "authority": "release-authority"
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "K1",
+        "authority": "release-authority",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "K2",
+        "authority": "release-authority",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "signature.authorize",
+      "args": {
+        "key_id": "BW",
+        "authority": "build-witness",
+        "scope": "build.attest",
+        "not_after": 100
+      }
+    },
+    {
+      "op": "transparency.register_witness",
+      "args": {
+        "witness_id": "W1",
+        "public_key": "a5a7e0692cf4f43625ea77ac9ffb8d09f5c0a8a14d470b00ebd13c778ff68fe2"
+      }
+    },
+    {
+      "op": "transparency.register_witness",
+      "args": {
+        "witness_id": "W2",
+        "public_key": "855f52be7e24e4082e83d0f89d6baf1c845fbca1a95bc5d3346130aaa698ba72"
+      }
+    },
+    {
+      "op": "provenance.build",
+      "args": {
+        "build_id": "build-d",
+        "name": "release.bin",
+        "builder": "old-builder",
+        "at": 1,
+        "content": {
+          "artifact": "D",
+          "bytes": "original"
+        },
+        "recipe": {
+          "toolchain": "gcc-12",
+          "flags": [
+            "-O2"
+          ],
+          "command": "make release"
+        },
+        "snapshot": {
+          "sources": [
+            "S@sha256:aaa",
+            "compiler@sha256:bbb"
+          ]
+        },
+        "output_files": [
+          "release.bin"
+        ],
+        "min_api": 2,
+        "max_api": 4
+      }
+    },
+    {
+      "op": "signature.make_signature",
+      "args": {
+        "signature_id": "sig-k1-d",
+        "key_id": "K1",
+        "kind": "artifact.seal",
+        "subject": "seal-d",
+        "at": 10,
+        "statement": {
+          "artifact_digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+          "artifact_name": "release.bin",
+          "build_id": "build-d",
+          "builder": "old-builder",
+          "builder_authority": "old-builder",
+          "kind": "artifact.seal",
+          "release_at": 10
+        },
+        "private_key": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "op": "provenance.seal",
+      "args": {
+        "seal_id": "seal-d",
+        "build_id": "build-d",
+        "signatures": [
+          "sig-k1-d"
+        ],
+        "release_at": 10
+      }
+    },
+    {
+      "op": "transparency.submit_head",
+      "args": {
+        "head_id": "head-d",
+        "log_id": "release-log",
+        "witness": "W1",
+        "size": 1,
+        "root": "a1687c025ae76d1d7330bdf8e5dfffade99ed53f154776b1f41f28b63196497c",
+        "at": 10,
+        "entries": [
+          "{\"digest\":\"ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2\",\"kind\":\"release\"}"
+        ],
+        "private_key": "4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    },
+    {
+      "op": "transparency.anchor",
+      "args": {
+        "head_id": "head-d"
+      }
+    },
+    {
+      "op": "artifact.baseline",
+      "args": {
+        "service": "svc",
+        "api": 3,
+        "generation": 1
+      }
+    },
+    {
+      "op": "artifact.contract",
+      "args": {
+        "artifact_id": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "min_protocol": 1,
+        "max_protocol": 3
+      }
+    },
+    {
+      "op": "artifact.population",
+      "args": {
+        "service": "svc",
+        "protocol": 1,
+        "count": 5
+      }
+    },
+    {
+      "op": "artifact.plan",
+      "args": {
+        "event_id": "ev-p1",
+        "plan_id": "p1",
+        "service": "svc",
+        "artifact_id": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "start_ts": 1,
+        "end_ts": 10
+      }
+    },
+    {
+      "op": "stage.start",
+      "args": {
+        "stage_id": "s1",
+        "plan_id": "p1",
+        "members": [
+          {
+            "replica": "a",
+            "generation": 1
+          }
+        ],
+        "start_ts": 2,
+        "end_ts": 6
+      }
+    },
+    {
+      "op": "stage.receipt",
+      "args": {
+        "receipt_id": "r-d",
+        "stage_id": "s1",
+        "replica": "a",
+        "generation": 1,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "seal_id": "seal-d"
+      }
+    },
+    {
+      "op": "stage.sample",
+      "args": {
+        "sample_id": "h-d",
+        "stage_id": "s1",
+        "replica": "a",
+        "at": 3,
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "healthy": true
+      }
+    },
+    {
+      "op": "provenance.build",
+      "args": {
+        "build_id": "build-e",
+        "name": "release.bin",
+        "builder": "isolated-builder",
+        "at": 12,
+        "content": {
+          "artifact": "E",
+          "bytes": "rebuilt"
+        },
+        "recipe": {
+          "toolchain": "gcc-12",
+          "flags": [
+            "-O2"
+          ],
+          "command": "make release"
+        },
+        "snapshot": {
+          "sources": [
+            "S@sha256:aaa",
+            "compiler@sha256:ccc"
+          ]
+        },
+        "output_files": [
+          "release.bin"
+        ],
+        "isolated": true,
+        "rebuilt_from": "build-d",
+        "min_api": 2,
+        "max_api": 4
+      }
+    },
+    {
+      "op": "signature.make_signature",
+      "args": {
+        "signature_id": "sig-k2-e",
+        "key_id": "K2",
+        "kind": "artifact.seal",
+        "subject": "seal-e",
+        "at": 14,
+        "statement": {
+          "artifact_digest": "70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b",
+          "artifact_name": "release.bin",
+          "build_id": "build-e",
+          "builder": "isolated-builder",
+          "builder_authority": "isolated-builder",
+          "kind": "artifact.seal",
+          "release_at": 14
+        },
+        "private_key": "2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    },
+    {
+      "op": "transparency.submit_head",
+      "args": {
+        "head_id": "head-e",
+        "log_id": "rebuild-log",
+        "witness": "W2",
+        "size": 1,
+        "root": "f04dcc03585499aededfcc6383db15c9b0078437c05021512afdac92bc510344",
+        "at": 14,
+        "entries": [
+          "{\"digest\":\"70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b\",\"kind\":\"release\"}"
+        ],
+        "private_key": "5555555555555555555555555555555555555555555555555555555555555555"
+      }
+    },
+    {
+      "op": "transparency.anchor",
+      "args": {
+        "head_id": "head-e"
+      }
+    },
+    {
+      "op": "provenance.seal",
+      "args": {
+        "seal_id": "seal-e",
+        "build_id": "build-e",
+        "signatures": [
+          "sig-k2-e"
+        ],
+        "release_at": 14,
+        "log_id": "rebuild-log",
+        "log_entry": "{\"digest\":\"70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b\",\"kind\":\"release\"}",
+        "log_known": true
+      }
+    },
+    {
+      "op": "artifact.baseline",
+      "args": {
+        "service": "svc",
+        "api": 3,
+        "generation": 1
+      }
+    },
+    {
+      "op": "artifact.contract",
+      "args": {
+        "artifact_id": "70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b",
+        "min_protocol": 1,
+        "max_protocol": 3
+      }
+    },
+    {
+      "op": "artifact.population",
+      "args": {
+        "service": "svc",
+        "protocol": 1,
+        "count": 5
+      }
+    },
+    {
+      "op": "artifact.plan",
+      "args": {
+        "event_id": "ev-p2",
+        "plan_id": "p2",
+        "service": "svc",
+        "artifact_id": "70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b",
+        "start_ts": 20,
+        "end_ts": 30
+      }
+    },
+    {
+      "op": "provenance.pending_cleanup",
+      "args": {
+        "source_digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "replicas": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "stage.start",
+      "args": {
+        "stage_id": "s2",
+        "plan_id": "p2",
+        "members": [
+          {
+            "replica": "a",
+            "generation": 1
+          }
+        ],
+        "start_ts": 21,
+        "end_ts": 26
+      }
+    },
+    {
+      "op": "provenance.clean",
+      "args": {
+        "replica": "a",
+        "digest": "ee1ea02997a8ae535ccb2a6f2f893c233231c78755592dbad8edb7fa25acdbe2",
+        "at": 29,
+        "note": "removed D before E"
+      }
+    },
+    {
+      "op": "stage.start",
+      "args": {
+        "stage_id": "s2",
+        "plan_id": "p2",
+        "members": [
+          {
+            "replica": "a",
+            "generation": 1
+          }
+        ],
+        "start_ts": 21,
+        "end_ts": 26
+      }
+    },
+    {
+      "op": "stage.receipt",
+      "args": {
+        "receipt_id": "r-e",
+        "stage_id": "s2",
+        "replica": "a",
+        "generation": 1,
+        "digest": "70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b",
+        "seal_id": "seal-e"
+      }
+    },
+    {
+      "op": "stage.sample",
+      "args": {
+        "sample_id": "h-e",
+        "stage_id": "s2",
+        "replica": "a",
+        "at": 23,
+        "digest": "70b0b21e7df7a84438af76e0b9866ee19373788cffde9dd733a7bac5bd67a68b",
+        "healthy": true
+      }
+    },
+    {
+      "op": "stage.decide",
+      "args": {
+        "stage_id": "s2",
+        "at": 26
+      }
+    },
+    {
+      "op": "provenance.quarantine_build",
+      "args": {
+        "build_id": "build-d",
+        "at": 40,
+        "reason": "build machine compromised",
+        "machine": true
+      }
+    }
+  ]
+}
