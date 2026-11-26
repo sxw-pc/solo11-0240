@@ -1,0 +1,21 @@
+{
+  "actions": [
+    {"op": "artifact.register", "args": {"artifact_id": "old7", "digest": "east7old", "min_api": 3, "max_api": 3, "format": "old"}},
+    {"op": "artifact.register", "args": {"artifact_id": "old8-east", "digest": "east8old", "min_api": 3, "max_api": 3, "format": "old"}},
+    {"op": "artifact.register", "args": {"artifact_id": "new8-south", "digest": "south8new", "min_api": 3, "max_api": 4, "format": "new"}},
+    {"op": "artifact.bridge", "args": {"bridge_id": "old-new", "from_format": "old", "to_format": "new", "reversible": true}},
+    {"op": "recovery.region_stable", "args": {"service": "svc", "region": "east", "artifact_id": "old7", "generation": 7, "api": 3}},
+    {"op": "recovery.region_stable", "args": {"service": "svc", "region": "south", "artifact_id": "new8-south", "generation": 8, "api": 3}},
+    {"op": "stage.policy", "args": {"service": "svc", "mode": "dual_write", "writer_region": "east", "bridge_id": "old-new"}},
+    {"op": "stage.link_down", "args": {"link_id": "cut", "service": "svc", "at": 100}},
+    {"op": "recovery.region_stable", "args": {"service": "svc", "region": "east", "artifact_id": "old8-east", "generation": 8, "api": 3, "at": 101}},
+    {"op": "write.submit", "args": {"global_id": "W1", "service": "svc", "region": "east", "customer": "C", "payload": "one", "format": "old"}},
+    {"op": "write.commit", "args": {"op_id": "W2", "service": "svc", "region": "south", "customer": "C", "data": "two", "format": "new", "ack": false}},
+    {"op": "write.recover", "args": {"global_id": "W2", "service": "svc"}},
+    {"op": "region.reconnect", "args": {"link_id": "heal", "service": "svc", "at": 200}},
+    {"op": "recovery.reconcile", "args": {"service": "svc"}},
+    {"op": "write.backfill", "args": {"global_id": "W1", "from_region": "east", "to_region": "south"}},
+    {"op": "write.backfill", "args": {"global_id": "W2", "from_region": "south", "to_region": "east"}},
+    {"op": "recovery.switch_pointer", "args": {"service": "svc", "artifact_id": "new8-south", "region": "south"}}
+  ]
+}
