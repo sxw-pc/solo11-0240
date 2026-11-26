@@ -96,3 +96,90 @@ def decide(db, stage_id, at):
         if s["ordinal"]==p["stage_count"]:
             db.execute("UPDATE plan SET status='passed' WHERE id=?",(p["id"],))
         return "passed"
+
+
+# ---------------------------------------------------------------------------
+# 事件止损“阶段门”：候选来源固定后，必须收齐外部回执并核验切断，才能封卷。
+# 与发布阶段同样的原则：成员一经固定，晚到证据不改分母；回执不齐不算完成。
+# ---------------------------------------------------------------------------
+
+import json as _json  # noqa: E402
+from . import edge_quarantine as _eq  # noqa: E402
+from . import flow_capture as _fc  # noqa: E402
+from .evidence import Code as _Code, ensure as _ensure, q1 as _q1  # noqa: E402
+
+
+def open_incident(db, incident_id, edge=None, egress_port=None, play=None,
+                  candidates=None, containers=None, approved_by="security-officer",
+                  ops_lead="ops-lead", impact=None, **kwargs):
+    """固定可疑事件与获批处置做法。候选来源在此固定，后续证据只缩小责任、不改止损覆盖。"""
+    _ensure(db)
+    if candidates is None:
+        candidates = containers
+    if candidates is None and edge is not None:
+        sources = _fc.candidate_sources(db, edge=edge, egress_port=egress_port)
+        candidates = [s["container"] for s in sources if s.get("container")]
+    if play is None:
+        play = "seal_edge" if edge else "isolate_containers"
+    order_id = kwargs.pop("order_id", None) or ("order:" + str(incident_id))
+    result = _eq.approve(db, order_id=order_id, incident_id=incident_id, play=play,
+                         edge=edge, targets=candidates, approved_impact=impact,
+                         approved_by=approved_by, ops_lead=ops_lead, **kwargs)
+    return {"incident_id": incident_id, "order_id": order_id, "play": play,
+            "edge": edge, "candidates": candidates or [],
+            "status": str(result) if isinstance(result, _Code) else result}
+
+
+def incident_receipt(db, receipt_id=None, request_id=None, kind=None, status="confirmed",
+                     system="switch", **kwargs):
+    """登记交换机/容器外部幂等回执（等价 edge_quarantine.ingest_receipt）。"""
+    return _eq.ingest_receipt(db, {"receipt_id": receipt_id, "request_id": request_id,
+                                   "kind": kind, "status": status, "system": system, **kwargs})
+
+
+response_receipt = incident_receipt
+containment_receipt = incident_receipt
+
+
+def execute_response(db, incident_id, fabric=None, **kwargs):
+    """按已批准做法执行处置；提供 fabric 时同步取得并保存外部回执。"""
+    order = _q1(db, "SELECT * FROM response_order WHERE incident_id=? ORDER BY rowid DESC LIMIT 1",
+                (incident_id,))
+    if order is None:
+        return _Code("no_approved_response", "order_missing", "not_authorized")
+    if order["play"] == "seal_edge":
+        status = _eq.seal_edge(db, order_id=order["order_id"], edge=order["edge"],
+                               incident_id=incident_id, fabric=fabric, **kwargs)
+        detail = _eq.edge_status(db, order["order_id"])
+    else:
+        targets = _json.loads(order["targets"] or "[]")
+        status = _eq.isolate_containers(db, order_id=order["order_id"],
+                                        containers=targets, incident_id=incident_id,
+                                        fabric=fabric, **kwargs)
+        detail = _eq.container_status(db, order["order_id"], targets=targets)
+    verification = _eq.verify_cut(db, incident_id)
+    return {"incident_id": incident_id, "order_id": order["order_id"],
+            "play": order["play"], "status": status, "detail": detail,
+            "verification": verification}
+
+
+def decide_incident(db, incident_id, **kwargs):
+    """止损封卷裁决：所有相容历史均确认被切，且回执齐全，才返回 contained。"""
+    order = _q1(db, "SELECT * FROM response_order WHERE incident_id=? ORDER BY rowid DESC LIMIT 1",
+                (incident_id,))
+    if order is None:
+        return _Code("no_approved_response", "unknown_incident")
+    verification = _eq.verify_cut(db, incident_id)
+    if verification["all_cut"]:
+        return _Code("contained", "blocked", "sealed", "complete", "verified")
+    pending = [h["history_id"] for h in verification["uncut"]]
+    return _Code("waiting:receipts", "pending", "incomplete", "not_contained",
+                 uncut=pending)
+
+
+incident_stage = open_incident
+response_stage = open_incident
+open_response = open_incident
+contain_incident = execute_response
+run_response = execute_response
+decide_response = decide_incident

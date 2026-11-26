@@ -1,0 +1,197 @@
+{
+  "evidence": {
+    "candidate_sources": [
+      {
+        "tenant": "t1",
+        "tenant_id": "t1",
+        "container": "p1",
+        "container_id": "p1",
+        "source_container": "p1",
+        "pod": null,
+        "lease_id": "nat-epoch-1",
+        "session_id": null,
+        "history_id": "hist-ee166446e81df60c",
+        "basis": "clock_unsynced_lease_remains_possible"
+      },
+      {
+        "tenant": "t2",
+        "tenant_id": "t2",
+        "container": "p2",
+        "container_id": "p2",
+        "source_container": "p2",
+        "pod": null,
+        "lease_id": "nat-epoch-2",
+        "session_id": "old-conntrack-44321",
+        "history_id": "hist-f436422a2ad51dba",
+        "basis": "clock_unsynced_lease_remains_possible"
+      }
+    ],
+    "candidate_tenants": [
+      "t1",
+      "t2"
+    ],
+    "notifiable_tenants": [],
+    "ambiguous": true,
+    "flows": [
+      {
+        "flow_id": "flow:e1:44321",
+        "incident_id": null,
+        "edge": "e1",
+        "egress_ip": null,
+        "egress_port": "44321",
+        "protocol": "tcp",
+        "direction": "egress",
+        "observation_count": 2,
+        "page_count": 2,
+        "rescan_count": 0,
+        "page_label_bytes": 1600,
+        "confirmed_bytes": 800,
+        "counter_confirmed": true,
+        "byte_basis": "independent_counter:ctr-e1-44321",
+        "duplicate_page_records": 1,
+        "status": "open"
+      }
+    ],
+    "real_name_notice": "withheld_pending_source_convergence"
+  },
+  "container_play": {
+    "play": "forensic_isolation_of_p1_p2_after_traffic_migration",
+    "approved_impact": {
+      "isolated_containers": [
+        "p1",
+        "p2"
+      ],
+      "e1_other_customers": "continue_serving"
+    },
+    "execution": {
+      "incident_id": "INC-CONTAINERS",
+      "order_id": "order:INC-CONTAINERS",
+      "play": "isolate_containers",
+      "status": "contained",
+      "detail": {
+        "status": "contained",
+        "targets": [
+          {
+            "container": "p1",
+            "moved_forensics": true,
+            "egress_revoked": true,
+            "complete": true
+          },
+          {
+            "container": "p2",
+            "moved_forensics": true,
+            "egress_revoked": true,
+            "complete": true
+          }
+        ],
+        "complete": true,
+        "completed": 2,
+        "total": 2
+      },
+      "verification": {
+        "all_cut": true,
+        "verified": true,
+        "histories": [
+          {
+            "history_id": "hist-ee166446e81df60c",
+            "flow_id": "flow:e1:44321",
+            "incident_id": null,
+            "tenant": "t1",
+            "container": "p1",
+            "pod": null,
+            "lease_id": "nat-epoch-1",
+            "session_id": null,
+            "edge": "e1",
+            "egress_port": "44321",
+            "compatible": true,
+            "basis": "clock_unsynced_lease_remains_possible",
+            "cut": true,
+            "reasons": [
+              "container_in_forensics_and_egress_revoked"
+            ]
+          },
+          {
+            "history_id": "hist-f436422a2ad51dba",
+            "flow_id": "flow:e1:44321",
+            "incident_id": null,
+            "tenant": "t2",
+            "container": "p2",
+            "pod": null,
+            "lease_id": "nat-epoch-2",
+            "session_id": "old-conntrack-44321",
+            "edge": "e1",
+            "egress_port": "44321",
+            "compatible": true,
+            "basis": "clock_unsynced_lease_remains_possible",
+            "cut": true,
+            "reasons": [
+              "container_in_forensics_and_egress_revoked"
+            ]
+          }
+        ],
+        "uncut": [],
+        "covered_histories": 2
+      }
+    },
+    "container_receipts": [
+      {
+        "receipt_id": "cmr-15d8865de86fe3e3",
+        "request_id": "mig-p1-svc",
+        "system": "container",
+        "kind": "traffic_migrated",
+        "status": "confirmed",
+        "confirmed": true,
+        "container": "p1",
+        "workloads": [
+          "unrelated-svc"
+        ]
+      },
+      {
+        "receipt_id": "cmv-3745f040ce147fe4",
+        "request_id": "move-cdbf978028f20589",
+        "system": "container",
+        "kind": "move_forensics",
+        "status": "confirmed",
+        "confirmed": true,
+        "container": "p1",
+        "target_network": "forensics"
+      },
+      {
+        "receipt_id": "crv-d619c9da44008f05",
+        "request_id": "revoke-0f67b95fb95101d4",
+        "system": "container",
+        "kind": "revoke_egress",
+        "status": "confirmed",
+        "confirmed": true,
+        "container": "p1"
+      },
+      {
+        "receipt_id": "cmv-62d5992c2cf8803d",
+        "request_id": "move-d354e2d40ebd21d1",
+        "system": "container",
+        "kind": "move_forensics",
+        "status": "confirmed",
+        "confirmed": true,
+        "container": "p2",
+        "target_network": "forensics"
+      },
+      {
+        "receipt_id": "crv-0aa582f501c920b8",
+        "request_id": "revoke-d711cb6dea51dcc6",
+        "system": "container",
+        "kind": "revoke_egress",
+        "status": "confirmed",
+        "confirmed": true,
+        "container": "p2"
+      }
+    ]
+  },
+  "recovery_runbook": [
+    "保持 e1 拒绝规则生效，并确认交换机会话表清空回执；",
+    "断电重启后用 reconcile 从交换机/容器/通知网关的幂等回执重建实际历史；",
+    "补入校时偏移与真实会话证据后重跑 identify_sources 缩小责任；",
+    "仅当某租户在全部相容历史中成立时才 send_notice 发实名通知；",
+    "恢复：先回迁取证容器/撤销临时规则，核对会话重建与字节计数器后关单。"
+  ],
+  "event_sourced_audit": "python -m cloudroll all fixtures/egress_incident.json --db incident.sqlite 输出中的 audit.verified 才代表状态可由命令事件重放重建"
+}

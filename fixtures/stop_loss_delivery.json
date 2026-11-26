@@ -1,0 +1,43 @@
+{
+  "actions": [
+    {"op": "flow.import_page", "args": {"page": "egress-1000", "rows": [
+      {"edge": "e1", "ip": "10.10.0.11", "tenant": "t1", "bytes": 800,
+       "egress_port": 44321, "observed_at": "10:00", "collector": "edge-A",
+       "direction": "egress", "protocol": "tcp"}]}},
+    {"op": "flow.import_page", "args": {"page": "egress-1001", "rows": [
+      {"edge": "e1", "ip": "10.10.0.11", "tenant": "t2", "bytes": 800,
+       "egress_port": 44321, "observed_at": "10:01", "collector": "edge-B",
+       "direction": "egress", "protocol": "tcp"}]}},
+    {"op": "flow.record_counter", "args": {"counter_id": "ctr-1", "edge": "e1",
+       "egress_port": 44321, "bytes": 800}},
+    {"op": "flow.record_nat", "args": {"lease_id": "nat-1", "edge": "e1",
+       "egress_port": 44321, "container": "p1", "tenant": "t1", "epoch": 1,
+       "valid_from": "09:30", "valid_to": "10:00"}},
+    {"op": "flow.record_nat", "args": {"lease_id": "nat-2", "edge": "e1",
+       "egress_port": 44321, "container": "p2", "tenant": "t2", "epoch": 2,
+       "valid_from": "10:00", "valid_to": "11:00"}},
+    {"op": "flow.record_session", "args": {"session_id": "old-1", "edge": "e1",
+       "egress_port": 44321, "container": "p2", "tenant": "t2", "state": "old"}},
+    {"op": "flow.identify_sources", "args": {"target": "INC-44321",
+       "incident_id": "INC-44321"}},
+    {"op": "notice.send", "args": {"notice_id": "notice-t1-held", "tenant": "t1",
+       "target": "INC-44321"}},
+    {"op": "quarantine.approve", "args": {"order_id": "order-e1",
+       "incident_id": "INC-44321", "play": "seal_edge", "edge": "e1",
+       "approved_impact": {"kind": "edge", "edge": "e1",
+                           "all_customers_on_edge": true, "tenants": ["t1", "t2"]},
+       "approved_by": "security-officer", "ops_lead": "ops-lead"}},
+    {"op": "quarantine.install_rule", "args": {"request_id": "rule-1",
+       "order_id": "order-e1", "edge": "e1"}},
+    {"op": "quarantine.clear_sessions", "args": {"request_id": "clear-1",
+       "order_id": "order-e1", "edge": "e1"}},
+    {"op": "quarantine.switch_receipt", "args": {"receipt_id": "swr-1",
+       "request_id": "rule-1", "system": "switch", "kind": "rule_effective",
+       "status": "effective", "edge": "e1"}},
+    {"op": "quarantine.switch_receipt", "args": {"receipt_id": "swc-1",
+       "request_id": "clear-1", "system": "switch", "kind": "sessions_cleared",
+       "status": "confirmed", "edge": "e1", "cleared_count": 1}},
+    {"op": "quarantine.verify_cut", "args": {"target": "INC-44321"}},
+    {"op": "quarantine.status", "args": {"target": "order-e1"}}
+  ]
+}
