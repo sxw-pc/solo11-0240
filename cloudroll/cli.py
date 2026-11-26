@@ -1,12 +1,14 @@
 import argparse
 import json
 from pathlib import Path
-from . import artifact, stage, recovery
+from . import artifact, stage, recovery, processing_permit, execution_custody
 from .store import open_db, report, one, rows, tx
 
 COMMANDS={f"artifact.{name}":getattr(artifact,name) for name in ["baseline","register","contract","population","proxy","plan","revoke"]}
 COMMANDS.update({f"stage.{name}":getattr(stage,name) for name in ["start","receipt","sample","decide"]})
 COMMANDS.update({f"recovery.{name}":getattr(recovery,name) for name in ["stable","choose","compensate","close","orphan","resolve_orphan"]})
+COMMANDS.update({f"permit.{name}":getattr(processing_permit,name) for name in ["grant","withdraw","authorize"]})
+COMMANDS.update({f"custody.{name}":getattr(execution_custody,name) for name in ["receive","hop","key_release","attest","derive","classify","transfer","deliver","query"]})
 
 def apply_command(db, name, args, request_id):
     if name not in COMMANDS:
@@ -57,7 +59,7 @@ def run(db_path,fixture,subsystem=None):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("subsystem",choices=["artifact","stage","recovery","all"])
+    p.add_argument("subsystem",choices=["artifact","stage","recovery","permit","custody","all"])
     p.add_argument("fixture")
     p.add_argument("--db",default="cloudroll.sqlite")
     a=p.parse_args()
