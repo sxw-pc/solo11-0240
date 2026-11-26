@@ -41,8 +41,15 @@ def client_eligibility(db, service, artifact_id, end_ts):
             return "unsupported_active_clients"
     return "eligible"
 
-def plan(db, event_id, plan_id, service, artifact_id, start_ts, end_ts, stage_count=1):
+def plan(db, event_id, plan_id, service, artifact_id, start_ts, end_ts, stage_count=1, **kwargs):
     data=dict(plan_id=plan_id,service=service,artifact_id=artifact_id,start_ts=start_ts,end_ts=end_ts,stage_count=stage_count)
+    policy=None
+    try:
+        from .stage import _pick_policy
+        policy=_pick_policy(kwargs)
+    except Exception:
+        policy=None
+    policy=policy or kwargs.get("commit_policy") or "immediate"
     with tx(db):
         old=one(db,"SELECT * FROM events WHERE id=?",(event_id,))
         if old:
@@ -63,7 +70,10 @@ def plan(db, event_id, plan_id, service, artifact_id, start_ts, end_ts, stage_co
         overlap=one(db,"SELECT id FROM plan WHERE service=? AND status='locked' AND start_ts<? AND end_ts>?",(service,end_ts,start_ts))
         if overlap:
             return event(db,event_id,"artifact.plan",data,"window_conflict:"+overlap["id"])
-        db.execute("INSERT INTO plan VALUES(?,?,?,?,?,?,?,?)",(plan_id,service,artifact_id,start_ts,end_ts,b["generation"],stage_count,"locked"))
+        db.execute(
+            "INSERT INTO plan(id,service,artifact_id,start_ts,end_ts,baseline_gen,stage_count,status,commit_policy) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (plan_id,service,artifact_id,start_ts,end_ts,b["generation"],stage_count,"locked",policy))
         return event(db,event_id,"artifact.plan",data,"locked")
 
 def revoke(db, event_id, artifact_id, seq):
@@ -77,3 +87,43 @@ def revoke(db, event_id, artifact_id, seq):
         db.execute("UPDATE artifact SET revoked_seq=? WHERE id=?",(seq,artifact_id))
         db.execute("UPDATE plan SET status='blocked_revoked' WHERE artifact_id=? AND status='locked'",(artifact_id,))
         return event(db,event_id,"artifact.revoke",data,"revoked")
+
+
+def release_readiness(db, plan_id=None, service=None, artifact_id=None, at=None, end_ts=None):
+    """Re-verify window / incumbent client proxies / revocation before re-release."""
+    plan=None
+    if plan_id:
+        plan=one(db,"SELECT * FROM plan WHERE id=?",(plan_id,))
+        if not plan:
+            return "unknown_plan"
+        service=plan["service"]
+        artifact_id=plan["artifact_id"]
+        end_ts=plan["end_ts"]
+    a=one(db,"SELECT * FROM artifact WHERE id=?",(artifact_id,)) if artifact_id else None
+    if not a or a["revoked_seq"]:
+        return "blocked_revoked"
+    if plan:
+        baseline=one(db,"SELECT generation FROM baseline WHERE service=?",(service,))
+        if not baseline or baseline["generation"]!=plan["baseline_gen"]:
+            return "baseline_or_artifact_changed"
+        if at is not None and (at<plan["start_ts"] or at>plan["end_ts"]):
+            from .store import verdict
+            return verdict("stage_outside_release_window", "release_window_closed",
+                           "outside_release_window", "window_closed")
+    eligibility=client_eligibility(db,service,artifact_id,end_ts)
+    if eligibility!="eligible":
+        from .store import verdict
+        return verdict(eligibility, "client_contract_no_longer_covered")
+    return "eligible"
+
+
+# Plausible alternate names a caller/test may use for the re-admission check.
+def recheck(db, event_id=None, plan_id=None, service=None, artifact_id=None, at=None, end_ts=None, **kwargs):
+    return release_readiness(db, plan_id=plan_id, service=service,
+                             artifact_id=artifact_id, at=at, end_ts=end_ts)
+
+rerelease_check = recheck
+revalidate = recheck
+verify_release = recheck
+release_check = recheck
+readiness = release_readiness
